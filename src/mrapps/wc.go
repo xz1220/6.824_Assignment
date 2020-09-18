@@ -1,4 +1,5 @@
-ginunapackage main
+// ginunapackage main
+package main
 
 //
 // a word-count application "plugin" for MapReduce.
@@ -6,10 +7,13 @@ ginunapackage main
 // go build -buildmode=plugin wc.go
 //
 
-import "6.824/src/mr"
-import "unicode"
-import "strings"
-import "strconv"
+import (
+	"strconv"
+	"strings"
+	"unicode"
+
+	"6.824/src/mr"
+)
 
 //
 // The map function is called once for each file of input. The first
