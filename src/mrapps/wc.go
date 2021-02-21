@@ -1,4 +1,3 @@
-// ginunapackage main
 package main
 
 //
@@ -7,13 +6,10 @@ package main
 // go build -buildmode=plugin wc.go
 //
 
-import (
-	"strconv"
-	"strings"
-	"unicode"
-
-	"6.824/src/mr"
-)
+import "6.824/mr"
+import "unicode"
+import "strings"
+import "strconv"
 
 //
 // The map function is called once for each file of input. The first
