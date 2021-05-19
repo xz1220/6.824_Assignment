@@ -6,13 +6,16 @@ package main
 // go run mrsequential.go wc.so pg*.txt
 //
 
-import "fmt"
-import "6.824/mr"
-import "plugin"
-import "os"
-import "log"
-import "io/ioutil"
-import "sort"
+import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"plugin"
+	"sort"
+
+	"6.824/mr"
+)
 
 // for sorting by key.
 type ByKey []mr.KeyValue
@@ -38,6 +41,7 @@ func main() {
 	intermediate := []mr.KeyValue{}
 	for _, filename := range os.Args[2:] {
 		file, err := os.Open(filename)
+		defer file.Close()
 		if err != nil {
 			log.Fatalf("cannot open %v", filename)
 		}
@@ -45,7 +49,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("cannot read %v", filename)
 		}
-		file.Close()
+		// file.Close()
 		kva := mapf(filename, string(content))
 		intermediate = append(intermediate, kva...)
 	}
@@ -60,6 +64,7 @@ func main() {
 
 	oname := "mr-out-0"
 	ofile, _ := os.Create(oname)
+	defer ofile.Close()
 
 	//
 	// call Reduce on each distinct key in intermediate[],
@@ -83,7 +88,7 @@ func main() {
 		i = j
 	}
 
-	ofile.Close()
+	// ofile.Close()
 }
 
 //
