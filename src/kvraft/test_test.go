@@ -1,19 +1,16 @@
 package kvraft
 
-import (
-	"fmt"
-	"io/ioutil"
-	"math/rand"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"testing"
-	"time"
-
-	"6.824/models"
-	"6.824/porcupine"
-)
+import "6.824/porcupine"
+import "6.824/models"
+import "testing"
+import "strconv"
+import "time"
+import "math/rand"
+import "strings"
+import "sync"
+import "sync/atomic"
+import "fmt"
+import "io/ioutil"
 
 // The tester generously allows solutions to complete elections in one second
 // (much more than the paper's range of timeouts).
@@ -415,6 +412,8 @@ func GenericTestSpeed(t *testing.T, part string, maxraftstate int) {
 	if dur > numOps*timePerOp {
 		t.Fatalf("Operations completed too slowly %v/op > %v/op\n", dur/numOps, timePerOp)
 	}
+
+	cfg.end()
 }
 
 func TestBasic3A(t *testing.T) {

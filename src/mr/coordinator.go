@@ -1,12 +1,11 @@
 package mr
 
-import (
-	"log"
-	"net"
-	"net/http"
-	"net/rpc"
-	"os"
-)
+import "log"
+import "net"
+import "os"
+import "net/rpc"
+import "net/http"
+
 
 type Coordinator struct {
 	// Your definitions here.
@@ -24,6 +23,7 @@ func (c *Coordinator) Example(args *ExampleArgs, reply *ExampleReply) error {
 	reply.Y = args.X + 1
 	return nil
 }
+
 
 //
 // start a thread that listens for RPCs from worker.go
@@ -50,6 +50,7 @@ func (c *Coordinator) Done() bool {
 
 	// Your code here.
 
+
 	return ret
 }
 
@@ -62,6 +63,7 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
 	// Your code here.
+
 
 	c.server()
 	return &c
