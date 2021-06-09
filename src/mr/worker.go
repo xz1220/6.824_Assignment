@@ -30,12 +30,6 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
 
-	// Your worker implementation here.
-	fmt.Println("This is a test")
-
-	// uncomment to send the Example RPC to the coordinator.
-	// CallExample()
-
 	// make Rpc Call to coordinator and Get the Task
 
 	// call mapf and store immediate result
@@ -43,6 +37,27 @@ func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string)
 	// call reducef and write to the answer files
 
 }
+
+// 参数调用封装
+func rpcCaller(rpcFunc string, args *RpcRequest, reply *RpcResponse) bool {
+	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
+	sockname := coordinatorSock()
+	c, err := rpc.DialHTTP("unix", sockname)
+	if err != nil {
+		log.Fatal("dialing:", err)
+	}
+	defer c.Close()
+
+	err = c.Call(rpcFunc, args, reply)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+
+	return true
+}
+
+/***************************  Example  ***************************************/
 
 //
 // example function to show how to make an RPC call to the coordinator.

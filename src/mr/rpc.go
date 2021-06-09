@@ -23,6 +23,14 @@ type ExampleReply struct {
 }
 
 // Add your RPC definitions here.
+type RpcRequest struct {
+	WorkerID int64				``
+
+}
+
+type RpcResponse struct {
+	
+}
 
 
 // Cook up a unique-ish UNIX-domain socket name
