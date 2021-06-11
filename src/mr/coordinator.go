@@ -8,6 +8,12 @@ import (
 	"os"
 )
 
+const (
+	idle = 0
+	inProcess = 1
+	completed = 2
+)
+
 type Coordinator struct {
 	// Your definitions here.
 
