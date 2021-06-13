@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	idle = 0
+	idle      = 0
 	inProcess = 1
 	completed = 2
 )
