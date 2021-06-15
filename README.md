@@ -33,8 +33,25 @@ lab1需要用go 协程去实现一个分布式的mapreduce程序，已经给出�
 <details>
 <summary><strong> 集群环境 </strong></summary>
 
+- 依托于GFS提供全局的文件系统
+- 大量廉价机器去
+
 </details>
 
+<details>
+<summary><strong> MapReduce 运行过程 </strong></summary>
+
+</details>
+
+<details>
+<summary><strong> Master 职责与保存的结构体 </strong></summary>
+
+</details>
+
+<details>
+<summary><strong> Worker 职责与保存的结构体 </strong></summary>
+
+</details>
 
 
 <!-- template -->
