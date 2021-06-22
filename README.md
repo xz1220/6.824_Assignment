@@ -28,7 +28,7 @@ lab1需要用go 协程去实现一个分布式的mapreduce程序，已经给出�
 
 > [MapReduce 论文地址](http://static.googleusercontent.com/media/research.google.com/zh-CN//archive/mapreduce-osdi04.pdf)
 
-![MapReduce- execution overview](./doc/img/MapReduce-execution overview.png)
+![MapReduce- execution overview](./doc/img/MapReduceExecutionOverview.png)
 
 <details>
 <summary><strong> 集群环境 </strong></summary>
