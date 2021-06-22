@@ -2,7 +2,7 @@
 
 相关地址：[官方课程地址](https://pdos.csail.mit.edu/6.824/index.html)  [B站搬运课](https://www.bilibili.com/video/BV1qk4y197bB)
 
-## MapReduce & lab1
+## MapReduce & lab1
 ### 基本理论与摘要
 
 lab1需要用go 协程去实现一个分布式的mapreduce程序，已经给出了串行的情况。需要自己实现一下coordinator、worker、rpc三个组件，在src/mr下。
@@ -28,7 +28,7 @@ lab1需要用go 协程去实现一个分布式的mapreduce程序，已经给出�
 
 > [MapReduce 论文地址](http://static.googleusercontent.com/media/research.google.com/zh-CN//archive/mapreduce-osdi04.pdf)
 
-![MapReduce- execution overview](./doc/img/MapReduce- execution overview.png)
+![MapReduce- execution overview](./doc/img/MapReduce-execution overview.png)
 
 <details>
 <summary><strong> 集群环境 </strong></summary>
