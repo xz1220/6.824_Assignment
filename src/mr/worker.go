@@ -3,8 +3,9 @@ package mr
 import (
 	"fmt"
 	"hash/fnv"
-	"log"
 	"net/rpc"
+
+	log "github.com/sirupsen/logrus"
 )
 
 //
@@ -31,15 +32,35 @@ func ihash(key string) int {
 func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
 
 	// make Rpc Call to coordinator and Get the Task
-
+	go work(mapf, reducef)
 	// call mapf and store immediate result
 
 	// call reducef and write to the answer files
 
 }
 
-// 参数调用封装
-func rpcCaller(rpcFunc string, args *RpcRequest, reply *RpcResponse) bool {
+// work is real process function in order to talk with coordinator
+func work(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
+	// ask task from master
+	taskRequest, taskResponse := &AskTaskRequest{}, &AskTaskResponse{}
+
+	if ok := rpcCaller("AssignWorks", taskRequest, taskResponse); !ok {
+		log.Error("Rpc Caller Error: AssignWorks Error")
+	}
+
+	if taskResponse.TaskType == MapTask {
+
+	} else if taskResponse.TaskType == ReduceTask {
+
+	} else {
+		// 消息类型错误
+		log.Error("TaskType Error: Unknown Type!")
+	}
+
+}
+
+// rpcCalller 参数调用封装
+func rpcCaller(rpcFunc string, args interface{}, reply interface{}) bool {
 	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
 	sockname := coordinatorSock()
 	c, err := rpc.DialHTTP("unix", sockname)
@@ -47,6 +68,20 @@ func rpcCaller(rpcFunc string, args *RpcRequest, reply *RpcResponse) bool {
 		log.Fatal("dialing:", err)
 	}
 	defer c.Close()
+
+	var ok bool
+	switch args.(type) {
+	case *AskTaskRequest:
+		args, ok = args.(*AskTaskRequest)
+		if !ok {
+			log.Error("type assertion error")
+		}
+
+		reply, ok = reply.(*AskTaskResponse)
+		if !ok {
+			log.Error("type assertion error")
+		}
+	}
 
 	err = c.Call(rpcFunc, args, reply)
 	if err != nil {

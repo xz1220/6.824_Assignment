@@ -20,7 +20,7 @@ type Coordinator struct {
 }
 
 // Your code here -- RPC handlers for the worker to call.
-func (c *Coordinator) AssignWorks(args *RpcRequest, reply *RpcResponse) error {
+func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) error {
 	return nil
 }
 
