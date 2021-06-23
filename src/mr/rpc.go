@@ -17,6 +17,8 @@ import "strconv"
 const (
 	MapTask int64 = 1
 	ReduceTask int64 = 2
+
+	RpcRetryTimes int = 3
 )
 
 type ExampleArgs struct {

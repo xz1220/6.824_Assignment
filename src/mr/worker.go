@@ -41,22 +41,47 @@ func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string)
 
 // work is real process function in order to talk with coordinator
 func work(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
-	// ask task from master
-	taskRequest, taskResponse := &AskTaskRequest{}, &AskTaskResponse{}
+	for {
+		// ask task from master, try to get a test. If failed, try some times and if all failed, exit.
+		taskRequest, taskResponse := &AskTaskRequest{}, &AskTaskResponse{}
 
-	if ok := rpcCaller("AssignWorks", taskRequest, taskResponse); !ok {
-		log.Error("Rpc Caller Error: AssignWorks Error")
+		ok := rpcCaller("AssignWorks", taskRequest, taskResponse)
+		for times := 0; !ok && times < RpcRetryTimes; times++ {
+			log.Error("Rpc Caller Error: AssignWorks Error, Start Retry")
+			ok = rpcCaller("AssignWorks", taskRequest, taskResponse)
+		}
+
+		// retry 3 times and still fails
+		if !ok {
+			return
+		}
+
+		if taskResponse.TaskType == MapTask {
+			err := mapWorker(mapf, taskResponse)
+			if err != nil {
+				log.Fatalf("Worker Error: MapWorker Error, WorkerID - %d - %v", taskResponse.WorkerID, err)
+			}
+
+		} else if taskResponse.TaskType == ReduceTask {
+			err := reduceWorker(reducef, taskResponse)
+			if err != nil {
+				log.Fatalf("Worker Error: ReduceWorker Error, WorkerID - %d - %v", taskResponse.WorkerID, err)
+			}
+
+		} else {
+			// 消息类型错误
+			log.Error("TaskType Error: Unknown Type!")
+		}
 	}
+}
 
-	if taskResponse.TaskType == MapTask {
+func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
 
-	} else if taskResponse.TaskType == ReduceTask {
+	return nil
+}
 
-	} else {
-		// 消息类型错误
-		log.Error("TaskType Error: Unknown Type!")
-	}
-
+func reduceWorker(reducef func(string, []string) string, params *AskTaskResponse) error {
+	return nil
 }
 
 // rpcCalller 参数调用封装
@@ -69,6 +94,7 @@ func rpcCaller(rpcFunc string, args interface{}, reply interface{}) bool {
 	}
 	defer c.Close()
 
+	// type assertion
 	var ok bool
 	switch args.(type) {
 	case *AskTaskRequest:
@@ -84,54 +110,6 @@ func rpcCaller(rpcFunc string, args interface{}, reply interface{}) bool {
 	}
 
 	err = c.Call(rpcFunc, args, reply)
-	if err != nil {
-		fmt.Println(err)
-		return false
-	}
-
-	return true
-}
-
-/***************************  Example  ***************************************/
-
-//
-// example function to show how to make an RPC call to the coordinator.
-//
-// the RPC argument and reply types are defined in rpc.go.
-//
-func CallExample() {
-
-	// declare an argument structure.
-	args := ExampleArgs{}
-
-	// fill in the argument(s).
-	args.X = 99
-
-	// declare a reply structure.
-	reply := ExampleReply{}
-
-	// send the RPC request, wait for the reply.
-	call("Coordinator.Example", &args, &reply)
-
-	// reply.Y should be 100.
-	fmt.Printf("reply.Y %v\n", reply.Y)
-}
-
-//
-// send an RPC request to the coordinator, wait for the response.
-// usually returns true.
-// returns false if something goes wrong.
-//
-func call(rpcname string, args interface{}, reply interface{}) bool {
-	// c, err := rpc.DialHTTP("tcp", "127.0.0.1"+":1234")
-	sockname := coordinatorSock()
-	c, err := rpc.DialHTTP("unix", sockname)
-	if err != nil {
-		log.Fatal("dialing:", err)
-	}
-	defer c.Close()
-
-	err = c.Call(rpcname, args, reply)
 	if err != nil {
 		fmt.Println(err)
 		return false
