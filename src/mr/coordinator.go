@@ -40,7 +40,6 @@ const (
 	 Coordinator RPC Function
 	*/
 	AssignWorks = "Coordinator.AssignWorks"
-
 )
 
 type Coordinator struct {
@@ -128,6 +127,7 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 		}()
 	}
 
+	// TODO: try to assign work and update the status
 	taskID, taskType := c.FindTheTask()
 	if taskID == -1 {
 		log.Fatal("All Task Has Been Done")
@@ -149,8 +149,14 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
 }
 
 /*
+ Heartbeat module
+*/
 
- */
+// TODO：
+
+/*
+ Status check module
+*/
 func (c *Coordinator) IsFinished() bool {
 	if c.FindMapTasks() == -1 && c.FindReduceTasks() == -1 {
 		return true
