@@ -123,6 +123,11 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 		}()
 	}
 
+	taskID, taskType := c.FindTheTask()
+	if taskID == -1 {
+		log.Fatal("")
+	}
+
 	return nil
 }
 
@@ -138,6 +143,9 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
 	return -1, -1
 }
 
+/*
+
+*/
 func (c *Coordinator) IsFinished() bool {
 	if c.FindMapTasks() == -1 && c.FindReduceTasks() == -1 {
 		return true
@@ -152,6 +160,9 @@ func (c *Coordinator) FindMapTasks() int64 {
 			return key
 		}
 	}
+	
+	// update the MapStatus
+	c.AllMapOk = true
 	return -1
 }
 
@@ -161,5 +172,8 @@ func (c *Coordinator) FindReduceTasks() int64 {
 			return key
 		}
 	}
+
+	// update the reduceStatus
+	c.AllReduceOk = true
 	return -1
 }
