@@ -31,7 +31,7 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
 
-	// init goroutines pools and select to  
+	// init goroutines pools and select to
 
 	// make Rpc Call to coordinator and Get the Task
 	go work(mapf, reducef)
@@ -44,10 +44,10 @@ func work(mapf func(string, string) []KeyValue, reducef func(string, []string) s
 		// ask task from master, try to get a test. If failed, try some times and if all failed, exit.
 		taskRequest, taskResponse := &AskTaskRequest{}, &AskTaskResponse{}
 
-		ok := rpcCaller("AssignWorks", taskRequest, taskResponse)
+		ok := rpcCaller(AssignWorks, taskRequest, taskResponse)
 		for times := 0; !ok && times < RpcRetryTimes; times++ {
 			log.Error("Rpc Caller Error: AssignWorks Error, Start Retry")
-			ok = rpcCaller("AssignWorks", taskRequest, taskResponse)
+			ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
 		}
 
 		// retry 3 times and still fails
@@ -81,7 +81,7 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 }
 
 func reduceWorker(reducef func(string, []string) string, params *AskTaskResponse) error {
-	
+
 	return nil
 }
 

@@ -35,6 +35,12 @@ const (
 	ReduceTask = 2
 
 	RpcRetryTimes = 3
+
+	/*
+	 Coordinator RPC Function
+	*/
+	AssignWorks = "Coordinator.AssignWorks"
+
 )
 
 type Coordinator struct {
@@ -81,11 +87,10 @@ func (c *Coordinator) server() {
 // if the entire job has finished.
 //
 func (c *Coordinator) Done() bool {
-	for {
-		if c.AllMapOk && c.AllReduceOk {
-			return true
-		}
+	if c.AllMapOk && c.AllReduceOk {
+		return true
 	}
+	return false
 }
 
 //
@@ -125,7 +130,7 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 
 	taskID, taskType := c.FindTheTask()
 	if taskID == -1 {
-		log.Fatal("")
+		log.Fatal("All Task Has Been Done")
 	}
 
 	return nil
@@ -145,7 +150,7 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
 
 /*
 
-*/
+ */
 func (c *Coordinator) IsFinished() bool {
 	if c.FindMapTasks() == -1 && c.FindReduceTasks() == -1 {
 		return true
@@ -160,7 +165,7 @@ func (c *Coordinator) FindMapTasks() int64 {
 			return key
 		}
 	}
-	
+
 	// update the MapStatus
 	c.AllMapOk = true
 	return -1
