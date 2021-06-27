@@ -14,6 +14,13 @@ import "strconv"
 // and reply for an RPC.
 //
 
+const (
+	MapTask int64 = 1
+	ReduceTask int64 = 2
+
+	RpcRetryTimes int = 3
+)
+
 type ExampleArgs struct {
 	X int
 }
@@ -23,6 +30,15 @@ type ExampleReply struct {
 }
 
 // Add your RPC definitions here.
+type AskTaskRequest struct {
+	WorkerID int64				``
+}
+
+type AskTaskResponse struct {
+	TaskPath string
+	WorkerID int64
+	TaskType int64
+}
 
 
 // Cook up a unique-ish UNIX-domain socket name
