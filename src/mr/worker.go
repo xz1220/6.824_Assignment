@@ -31,11 +31,10 @@ func ihash(key string) int {
 //
 func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
 
+	// init goroutines pools and select to  
+
 	// make Rpc Call to coordinator and Get the Task
 	go work(mapf, reducef)
-	// call mapf and store immediate result
-
-	// call reducef and write to the answer files
 
 }
 
@@ -56,6 +55,7 @@ func work(mapf func(string, string) []KeyValue, reducef func(string, []string) s
 			return
 		}
 
+		// Do the work according to Type
 		if taskResponse.TaskType == MapTask {
 			err := mapWorker(mapf, taskResponse)
 			if err != nil {
