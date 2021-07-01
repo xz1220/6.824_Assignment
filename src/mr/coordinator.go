@@ -136,6 +136,7 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 	return nil
 }
 
+
 func (c *Coordinator) FindTheTask() (int64, int64) {
 	if taskID := c.FindMapTasks(); taskID != -1 {
 		return taskID, MapTask
