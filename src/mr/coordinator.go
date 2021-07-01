@@ -29,7 +29,7 @@ const (
 	Error     = 3 // only happend in the goroutines
 
 	/*
-	 TaskType
+	 TaskType For worker to choose run mapFunc or reduceFunc
 	*/
 	MapTask    = 1
 	ReduceTask = 2
@@ -40,6 +40,13 @@ const (
 	 Coordinator RPC Function
 	*/
 	AssignWorks = "Coordinator.AssignWorks"
+
+	/*
+	 some useful defination
+	*/
+	EmptyPath           = ""
+	TaskNotFound  int64 = -1
+	FatalTaskType int64 = -1
 )
 
 type Coordinator struct {
@@ -119,6 +126,7 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 			return errors.New("no new workers, init failed")
 		}
 
+		// get the first ID from idle worker queue
 		reply.WorkerID = c.IdleWorker[0]
 		// if everything ok, change the staus when return
 		defer func() {
@@ -129,37 +137,39 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 
 	// TODO: try to assign work and update the status
 	taskID, taskType := c.FindTheTask()
-	if taskID == -1 {
+	if taskID == TaskNotFound {
 		log.Fatal("All Task Has Been Done")
+		reply.TaskPath = EmptyPath
+		reply.TaskType = FatalTaskType
+		return nil
 	}
 
 	return nil
 }
 
-
 func (c *Coordinator) FindTheTask() (int64, int64) {
-	if taskID := c.FindMapTasks(); taskID != -1 {
+	if taskID := c.FindMapTasks(); taskID != TaskNotFound {
 		return taskID, MapTask
 	}
 
-	if taskID := c.FindReduceTasks(); taskID != -1 {
+	if taskID := c.FindReduceTasks(); taskID != TaskNotFound {
 		return taskID, ReduceTask
 	}
 
-	return -1, -1
+	return TaskNotFound, FatalTaskType
 }
 
 /*
  Heartbeat module
 */
 
-// TODO：
+// TODO：Implement Heartbeat module
 
 /*
  Status check module
 */
 func (c *Coordinator) IsFinished() bool {
-	if c.FindMapTasks() == -1 && c.FindReduceTasks() == -1 {
+	if c.FindMapTasks() == TaskNotFound && c.FindReduceTasks() == TaskNotFound {
 		return true
 	}
 
@@ -175,7 +185,7 @@ func (c *Coordinator) FindMapTasks() int64 {
 
 	// update the MapStatus
 	c.AllMapOk = true
-	return -1
+	return TaskNotFound
 }
 
 func (c *Coordinator) FindReduceTasks() int64 {
@@ -187,5 +197,5 @@ func (c *Coordinator) FindReduceTasks() int64 {
 
 	// update the reduceStatus
 	c.AllReduceOk = true
-	return -1
+	return TaskNotFound
 }

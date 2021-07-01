@@ -39,6 +39,7 @@ func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string)
 }
 
 // work is real process function in order to talk with coordinator
+// Infinite loop to keep worker running unless ask the task from coordinator failed for 3 times
 func work(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
 	for {
 		// ask task from master, try to get a test. If failed, try some times and if all failed, exit.
@@ -75,7 +76,10 @@ func work(mapf func(string, string) []KeyValue, reducef func(string, []string) s
 	}
 }
 
+// mapWorker is
 func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
+
+	// TODO:
 
 	return nil
 }
