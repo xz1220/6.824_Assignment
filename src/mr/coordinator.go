@@ -142,6 +142,7 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
 	}
 
 	if taskID := c.FindReduceTasks(); taskID != -1 {
+		
 		return taskID, ReduceTask
 	}
 

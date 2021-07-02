@@ -1,6 +1,7 @@
 package mr
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
 	"net/rpc"
@@ -25,6 +26,65 @@ func ihash(key string) int {
 	h.Write([]byte(key))
 	return int(h.Sum32() & 0x7fffffff)
 }
+
+/*
+ Go pool - The number of goroutine is controled by the NumWorker, which is larger than 1.
+ Worker wiill init the pool and when a goroutine exit unexceptedly, a new goroutine will be created.
+
+ TODO: This Go Pool rely on a infinite loop. So as for good use, it should provide a useful way to exit the pool.
+		But may not used in this project.
+ */
+
+// Task contains params and function and should pass to GoPool
+type Task struct {
+	Worker func(context.Context)
+	Params context.Context
+}
+
+func (t *Task) Run() {
+	t.Worker(t.Params)
+}
+
+// GoPool is a routine pool, you should use like this :
+// 1. pool := NewGoPool(nums) 
+// 2. go pool.Run()
+// 3. pool.Put(Task)
+type GoPool struct {
+	MaxRoutine int64
+	Task chan *Task
+	ControlSignal chan int64
+}
+
+func (g *GoPool) Put(t *Task) {
+	g.ControlSignal <- 1
+	g.Task <- t
+}
+
+func (g *GoPool) Worker(t *Task) {
+	t.Run()
+	<- g.ControlSignal
+}
+
+func (g *GoPool) Run() {
+	for {
+		select {
+		case t:= <- g.Task:
+			go g.Worker(t)
+		}
+	}
+}
+
+func NewGoPopl(maxNum int64) *GoPool{
+	Task := make(chan *Task, maxNum)
+	ControlSignal := make(chan int64, maxNum)
+	
+	return &GoPool{
+		MaxRoutine: maxNum, 
+		Task: Task,
+		ControlSignal: ControlSignal,
+	}
+} 
+
 
 //
 // main/mrworker.go calls this function.
