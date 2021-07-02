@@ -33,7 +33,7 @@ func ihash(key string) int {
 
  TODO: This Go Pool rely on a infinite loop. So as for good use, it should provide a useful way to exit the pool.
 		But may not used in this project.
- */
+*/
 
 // Task contains params and function and should pass to GoPool
 type Task struct {
@@ -46,12 +46,12 @@ func (t *Task) Run() {
 }
 
 // GoPool is a routine pool, you should use like this :
-// 1. pool := NewGoPool(nums) 
+// 1. pool := NewGoPool(nums)
 // 2. go pool.Run()
 // 3. pool.Put(Task)
 type GoPool struct {
-	MaxRoutine int64
-	Task chan *Task
+	MaxRoutine    int64
+	Task          chan *Task
 	ControlSignal chan int64
 }
 
@@ -62,49 +62,71 @@ func (g *GoPool) Put(t *Task) {
 
 func (g *GoPool) Worker(t *Task) {
 	t.Run()
-	<- g.ControlSignal
+	<-g.ControlSignal
 }
 
 func (g *GoPool) Run() {
 	for {
 		select {
-		case t:= <- g.Task:
+		case t := <-g.Task:
 			go g.Worker(t)
 		}
 	}
 }
 
-func NewGoPopl(maxNum int64) *GoPool{
+func NewGoPool(maxNum int64) *GoPool {
 	Task := make(chan *Task, maxNum)
 	ControlSignal := make(chan int64, maxNum)
-	
+
 	return &GoPool{
-		MaxRoutine: maxNum, 
-		Task: Task,
+		MaxRoutine:    maxNum,
+		Task:          Task,
 		ControlSignal: ControlSignal,
 	}
-} 
-
+}
 
 //
 // main/mrworker.go calls this function.
 //
 func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
 
-	// init goroutines pools and select to
+	// init goroutines pools and start pool
+	pool := NewGoPool(10)
+	go pool.Run()
 
-	// make Rpc Call to coordinator and Get the Task
-	go work(mapf, reducef)
-
+	// use infinite loop to try to create a  go routine
+	ctx := context.Background()
+	for {
+		pool.Put(
+			&Task{
+				Params: context.WithValue(context.WithValue(ctx, MapTask, mapf), ReduceTask, reducef),
+				Worker: work,
+			},
+		)
+	}
 }
 
 // work is real process function in order to talk with coordinator
-func work(mapf func(string, string) []KeyValue, reducef func(string, []string) string) {
+func work(ctx context.Context) {
 	for {
+		var mapf func(string, string) []KeyValue
+		var reducef func(string, []string) string
+		var ok bool
+
+		if mapf, ok = ctx.Value(MapTask).(func(string, string) []KeyValue); !ok || mapf == nil {
+			log.Error("Params Error: get map function from ctx error")
+			return
+		}
+
+		if reducef, ok = ctx.Value(ReduceTask).(func(string, []string) string); !ok || reducef == nil {
+			log.Error("Params Error: get reduce function from ctx error")
+			return
+		}
+
 		// ask task from master, try to get a test. If failed, try some times and if all failed, exit.
 		taskRequest, taskResponse := &AskTaskRequest{}, &AskTaskResponse{}
 
-		ok := rpcCaller(AssignWorks, taskRequest, taskResponse)
+		ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
 		for times := 0; !ok && times < RpcRetryTimes; times++ {
 			log.Error("Rpc Caller Error: AssignWorks Error, Start Retry")
 			ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
