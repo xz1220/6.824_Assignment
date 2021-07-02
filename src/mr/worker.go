@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
 	"net/rpc"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -108,6 +110,7 @@ func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string)
 
 // work is real process function in order to talk with coordinator
 func work(ctx context.Context) {
+	var workerID int64
 	for {
 		var mapf func(string, string) []KeyValue
 		var reducef func(string, []string) string
@@ -126,6 +129,10 @@ func work(ctx context.Context) {
 		// ask task from master, try to get a test. If failed, try some times and if all failed, exit.
 		taskRequest, taskResponse := &AskTaskRequest{}, &AskTaskResponse{}
 
+		if workerID != 0 {
+			taskRequest.WorkerID = workerID
+		}
+
 		ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
 		for times := 0; !ok && times < RpcRetryTimes; times++ {
 			log.Error("Rpc Caller Error: AssignWorks Error, Start Retry")
@@ -136,6 +143,9 @@ func work(ctx context.Context) {
 		if !ok {
 			return
 		}
+
+		// update workerID
+		workerID = taskResponse.WorkerID
 
 		// Do the work according to Type
 		if taskResponse.TaskType == MapTask {
@@ -158,11 +168,32 @@ func work(ctx context.Context) {
 }
 
 func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
+	
+	// 读取文件
+	file, err := os.Open(params.TaskPath)
+	if err != nil {
+		log.Fatalf("Cannot open %v", params.TaskPath)
+		return fmt.Errorf("Cannot open %v", params.TaskPath)
+	}
+	defer file.Close()
+
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		log.Fatalf("Cannot read %v", params.TaskPath)
+	}
+	
+	// 调用Map函数
+	kva := mapf(params.TaskPath, string(content))
+	
+
+	// 输出KV 应用ihash
 
 	return nil
 }
 
 func reduceWorker(reducef func(string, []string) string, params *AskTaskResponse) error {
+
+	// 
 
 	return nil
 }
