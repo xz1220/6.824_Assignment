@@ -42,6 +42,12 @@ const (
 	AssignWorks = "Coordinator.AssignWorks"
 )
 
+var (
+	NReduceTask int64    // init when mrcoordinator call MkCoordinator and pass nReduce 
+	NMapTask	int64	// Map
+)
+
+
 type Coordinator struct {
 	MapTasks         map[int64]string // MapTaskID and filePath
 	ReduceTasks      map[int64]string // ReduceTask
@@ -100,7 +106,7 @@ func (c *Coordinator) Done() bool {
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
-	// Your code here.
+	// init some status
 
 	c.server()
 	return &c

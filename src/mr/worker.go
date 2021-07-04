@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/rpc"
 	"os"
+	"strconv"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -151,13 +153,13 @@ func work(ctx context.Context) {
 		if taskResponse.TaskType == MapTask {
 			err := mapWorker(mapf, taskResponse)
 			if err != nil {
-				log.Fatalf("Worker Error: MapWorker Error, WorkerID - %d - %v", taskResponse.WorkerID, err)
+				log.Errorf("Worker Error: MapWorker Error, WorkerID - %d - %v", taskResponse.WorkerID, err)
 			}
 
 		} else if taskResponse.TaskType == ReduceTask {
 			err := reduceWorker(reducef, taskResponse)
 			if err != nil {
-				log.Fatalf("Worker Error: ReduceWorker Error, WorkerID - %d - %v", taskResponse.WorkerID, err)
+				log.Errorf("Worker Error: ReduceWorker Error, WorkerID - %d - %v", taskResponse.WorkerID, err)
 			}
 
 		} else {
@@ -168,23 +170,39 @@ func work(ctx context.Context) {
 }
 
 func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
-	
+
+	for NReduceTask == 0 {			
+		time.Sleep(1*time.Second)   // sleep for a while
+	}
+
 	// 读取文件
 	file, err := os.Open(params.TaskPath)
 	if err != nil {
-		log.Fatalf("Cannot open %v", params.TaskPath)
+		log.Errorf("Cannot open %v", params.TaskPath)
 		return fmt.Errorf("Cannot open %v", params.TaskPath)
 	}
 	defer file.Close()
 
 	content, err := ioutil.ReadAll(file)
 	if err != nil {
-		log.Fatalf("Cannot read %v", params.TaskPath)
+		log.Errorf("Cannot read %v", params.TaskPath)
+		return fmt.Errorf("Cannot read %v", params.TaskPath)
 	}
-	
+
 	// 调用Map函数
 	kva := mapf(params.TaskPath, string(content))
-	
+	if len(kva) == 0 {
+		log.Errorf("Task Error: file contains no content or the mapf exit unexceptedly")
+		return fmt.Errorf("Task Error: file contains no content or the mapf exit unexceptedly")
+	}
+
+	for _, v := range kva {
+		reduceId := int64(ihash(v.Key)) % NReduceTask
+		intermediateFileName := "mr-"+strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
+
+		
+
+	}
 
 	// 输出KV 应用ihash
 
@@ -193,7 +211,7 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 
 func reduceWorker(reducef func(string, []string) string, params *AskTaskResponse) error {
 
-	// 
+	//
 
 	return nil
 }
