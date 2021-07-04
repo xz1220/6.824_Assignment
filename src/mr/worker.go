@@ -206,24 +206,26 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 		return fmt.Errorf("Task Error: file contains no content or the mapf exit unexceptedly")
 	}
 
-	reduceId := int64(ihash(v.Key)) % NReduceTask
-	intermediateFileName := "mr-" + strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Errorf("System Error: get work path error!")
-		return fmt.Errorf("System Error: get work path error!")
-	}
-
-	filePath := pwd + "/" + intermediateFileName
-	tempFile, err := os.Create(filePath)
-	if err != nil {
-		log.Errorf("System Error: create file error - %v", file)
-	}
-	defer tempFile.Close()
-
-	encoder := json.NewEncoder(tempFile)
 	for _, v := range kva {
-		err := encoder.Encode(v)
+
+		reduceId := int64(ihash(v.Key)) % NReduceTask
+		intermediateFileName := "mr-" + strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
+		pwd, err := os.Getwd()
+		if err != nil {
+			log.Errorf("System Error: get work path error!")
+			return fmt.Errorf("System Error: get work path error!")
+		}
+
+		filePath := pwd + "/" + intermediateFileName
+		tempFile, err := os.Create(filePath)
+		if err != nil {
+			log.Errorf("System Error: create file error - %v", file)
+		}
+		defer tempFile.Close()
+
+		encoder := json.NewEncoder(tempFile)
+
+		err = encoder.Encode(v)
 		if err != nil {
 			log.Errorf("System Error: encode value to json error - %v", v)
 		}

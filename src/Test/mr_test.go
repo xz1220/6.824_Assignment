@@ -20,8 +20,8 @@ func TestOSPackage(t *testing.T) {
 	}
 	fmt.Println("pwd is - ", pwd)
 
-	TestFile := "test.txt"
-	file, err := os.Create(pwd + "/" + TestFile)
+	TestFile := "test.json"
+	file, err := os.Open(pwd + "/" + TestFile)
 	if err != nil {
 		log.Printf("file create err")
 	}
@@ -30,7 +30,12 @@ func TestOSPackage(t *testing.T) {
 	// file.Write([]byte("2222"))
 
 	tt := &test{"1"}
+	tt2 := &test{"2"}
+	tt3 := &test{"3"}
 	encode := json.NewEncoder(file)
 	encode.Encode(tt)
+	encode.Encode(tt2)
+	encode.Encode(tt2)
+	encode.Encode(tt3)
 
 }
