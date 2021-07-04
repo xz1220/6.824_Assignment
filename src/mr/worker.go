@@ -185,6 +185,8 @@ func work(ctx context.Context) {
 
 func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
 
+	var err error
+
 	// 读取文件
 	file, err := os.Open(params.TaskPath)
 	if err != nil {
@@ -217,14 +219,20 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 		}
 
 		filePath := pwd + "/" + intermediateFileName
-		tempFile, err := os.Create(filePath)
-		if err != nil {
-			log.Errorf("System Error: create file error - %v", file)
-		}
+
+		// var tempFile *os.File
+		// if !Exists(filePath) {
+		// 	tempFile, err = os.Create(filePath)
+		// 	if err != nil {
+		// 		log.Errorf("System Error: create file error - %v", file)
+		// 	}
+		// }else {
+		// 	tempFile, err := os.OpenFile(filePath, )
+		// }
+		tempFile, err := os.OpenFile(filePath, os.O_APPEND | os.O_CREATE, 777)
 		defer tempFile.Close()
 
 		encoder := json.NewEncoder(tempFile)
-
 		err = encoder.Encode(v)
 		if err != nil {
 			log.Errorf("System Error: encode value to json error - %v", v)
@@ -274,5 +282,21 @@ func rpcCaller(rpcFunc string, args interface{}, reply interface{}) bool {
 		return false
 	}
 
+	return true
+}
+
+/*
+ Utils contains some useful methonds.
+*/
+
+// 判断所给路径文件/文件夹是否存在
+func Exists(path string) bool {
+	_, err := os.Stat(path)    //os.Stat获取文件信息
+	if err != nil {
+		if os.IsExist(err) {
+			return true
+		}
+		return false
+	}
 	return true
 }

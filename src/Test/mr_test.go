@@ -21,7 +21,7 @@ func TestOSPackage(t *testing.T) {
 	fmt.Println("pwd is - ", pwd)
 
 	TestFile := "test.json"
-	file, err := os.Open(pwd + "/" + TestFile)
+	file, err := os.OpenFile(pwd + "/" + TestFile, os.O_APPEND | os.O_CREATE, 0666)
 	if err != nil {
 		log.Printf("file create err")
 	}
