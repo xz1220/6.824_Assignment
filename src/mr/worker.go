@@ -2,6 +2,7 @@ package mr
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"io/ioutil"
@@ -17,8 +18,8 @@ import (
 // Map functions return a slice of KeyValue.
 //
 type KeyValue struct {
-	Key   string
-	Value string
+	Key   string `json:"Key"`
+	Value string `json:"Value"`
 }
 
 //
@@ -113,11 +114,23 @@ func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string)
 // work is real process function in order to talk with coordinator
 func work(ctx context.Context) {
 	var workerID int64
+
+	// Make sure the number of reduce task has been assigned the value.
+	for retry := 0; NReduceTask == 0 && retry < MaxRetryTimes; retry++ {
+		time.Sleep(2 * time.Second)
+	}
+
+	if NReduceTask == 0 {
+		return
+	}
+
+	// infinite loop to ask for task and do the work
 	for {
 		var mapf func(string, string) []KeyValue
 		var reducef func(string, []string) string
 		var ok bool
 
+		// Map function and Reduce function are packed in the context, get it by the key and assert the tyoe.
 		if mapf, ok = ctx.Value(MapTask).(func(string, string) []KeyValue); !ok || mapf == nil {
 			log.Error("Params Error: get map function from ctx error")
 			return
@@ -131,12 +144,13 @@ func work(ctx context.Context) {
 		// ask task from master, try to get a test. If failed, try some times and if all failed, exit.
 		taskRequest, taskResponse := &AskTaskRequest{}, &AskTaskResponse{}
 
+		// if workerID == 0, which means this is the first loop
 		if workerID != 0 {
 			taskRequest.WorkerID = workerID
 		}
 
 		ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
-		for times := 0; !ok && times < RpcRetryTimes; times++ {
+		for times := 0; !ok && times < MaxRetryTimes; times++ {
 			log.Error("Rpc Caller Error: AssignWorks Error, Start Retry")
 			ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
 		}
@@ -171,10 +185,6 @@ func work(ctx context.Context) {
 
 func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
 
-	for NReduceTask == 0 {			
-		time.Sleep(1*time.Second)   // sleep for a while
-	}
-
 	// 读取文件
 	file, err := os.Open(params.TaskPath)
 	if err != nil {
@@ -196,12 +206,27 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 		return fmt.Errorf("Task Error: file contains no content or the mapf exit unexceptedly")
 	}
 
+	reduceId := int64(ihash(v.Key)) % NReduceTask
+	intermediateFileName := "mr-" + strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Errorf("System Error: get work path error!")
+		return fmt.Errorf("System Error: get work path error!")
+	}
+
+	filePath := pwd + "/" + intermediateFileName
+	tempFile, err := os.Create(filePath)
+	if err != nil {
+		log.Errorf("System Error: create file error - %v", file)
+	}
+	defer tempFile.Close()
+
+	encoder := json.NewEncoder(tempFile)
 	for _, v := range kva {
-		reduceId := int64(ihash(v.Key)) % NReduceTask
-		intermediateFileName := "mr-"+strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
-
-		
-
+		err := encoder.Encode(v)
+		if err != nil {
+			log.Errorf("System Error: encode value to json error - %v", v)
+		}
 	}
 
 	// 输出KV 应用ihash

@@ -34,7 +34,7 @@ const (
 	MapTask    = 1
 	ReduceTask = 2
 
-	RpcRetryTimes = 3
+	MaxRetryTimes = 3
 
 	/*
 	 Coordinator RPC Function
