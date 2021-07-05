@@ -92,6 +92,12 @@ Lab1主要流程梳理：
 
 </details>
 
+<details>
+<summary><strong> 并发 </strong></summary>
+
+- 文件读写：由于worker是并发的，会同时打开一些文件
+
+</details>
 
 <!-- template -->
 <!-- <details>

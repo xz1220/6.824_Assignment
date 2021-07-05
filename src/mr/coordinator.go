@@ -47,13 +47,13 @@ const (
 	EmptyPath           = ""
 	TaskNotFound  int64 = -1
 	FatalTaskType int64 = -1
+	FileWriterKey       = "syncWriter"
 )
 
 var (
-	NReduceTask int64    // init when mrcoordinator call MkCoordinator and pass nReduce 
-	NMapTask	int64	// Map
+	NReduceTask int64 // init when mrcoordinator call MkCoordinator and pass nReduce
+	NMapTask    int64 // Map
 )
-
 
 type Coordinator struct {
 	MapTasks         map[int64]string // MapTaskID and filePath
@@ -158,9 +158,8 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
 		return taskID, MapTask
 	}
 
-
 	if taskID := c.FindReduceTasks(); taskID != -1 {
-    
+
 		return taskID, ReduceTask
 	}
 
