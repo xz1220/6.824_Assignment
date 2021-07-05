@@ -125,6 +125,7 @@ func work(ctx context.Context) {
 	}
 
 	// infinite loop to ask for task and do the work
+
 	for {
 		var mapf func(string, string) []KeyValue
 		var reducef func(string, []string) string
@@ -183,6 +184,7 @@ func work(ctx context.Context) {
 	}
 }
 
+// mapWorker is
 func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
 
 	var err error
@@ -240,7 +242,7 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 	}
 
 	// 输出KV 应用ihash
-
+  
 	return nil
 }
 
