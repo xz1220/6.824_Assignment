@@ -109,12 +109,15 @@ func TestForFileLock(t *testing.T) {
 		wg.Add(1)
 
 		go func(*os.File) {
+			defer wg.Done()
+
 			if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
 				log.Println("add share lock in no block failed", err)
 			}
 
 			time.Sleep(10 * time.Second)
-
+			file.Write([]byte("Test\n"))
+			file.Sync()
 			// 解锁
 			if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
 				log.Println("unlock share lock failed", err)
@@ -125,7 +128,6 @@ func TestForFileLock(t *testing.T) {
 
 	wg.Wait()
 
-	
 }
 
 /*
