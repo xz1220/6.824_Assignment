@@ -1,7 +1,7 @@
 /*
  * @Author: your name
  * @Date: 2021-07-04 23:50:45
- * @LastEditTime: 2021-07-05 00:48:42
+ * @LastEditTime: 2021-07-05 08:45:41
  * @LastEditors: Please set LastEditors
  * @Description: In User Settings Edit
  * @FilePath: /6.824_Assignment/src/Test/mr_test.go
@@ -17,9 +17,9 @@ import (
 
 func TestOSPackage(t *testing.T) {
 
-	// type test struct {
-	// 	Name string `json:"name"`
-	// }
+	type test struct {
+		Name string `json:"name"`
+	}
 
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -54,9 +54,11 @@ func TestOSPackage(t *testing.T) {
 	// encode.Encode(tt2)
 	// encode.Encode(tt2)
 	// encode.Encode(tt3)
-	// fmt.Fprintf(file, "%v %v\n", "1", "1")
+
+	fmt.Fprintf(file, "%v %v\n", "1", "1")
 	file.WriteString("ttt")
 	file.Write([]byte("ttttttttt"))
+	file.Sync()
 	file.Close()
 }
 
