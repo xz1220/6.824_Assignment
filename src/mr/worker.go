@@ -2,13 +2,14 @@ package mr
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"io"
 	"io/ioutil"
 	"net/rpc"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -20,6 +21,18 @@ import (
 type KeyValue struct {
 	Key   string `json:"Key"`
 	Value string `json:"Value"`
+}
+
+// SyncWriter 
+type SyncWriter struct {
+	m      sync.Mutex
+	Writer io.Writer
+}
+
+func (w *SyncWriter) Write(b []byte) (n int, err error) {
+	w.m.Lock()
+	defer w.m.Unlock()
+	return w.Writer.Write(b)
 }
 
 //
@@ -99,12 +112,19 @@ func Worker(mapf func(string, string) []KeyValue, reducef func(string, []string)
 	pool := NewGoPool(10)
 	go pool.Run()
 
-	// use infinite loop to try to create a  go routine
+	// build context to pass params
 	ctx := context.Background()
+	ctx = context.WithValue(ctx, MapTask, mapf)
+	ctx = context.WithValue(ctx, ReduceTask, reducef)
+	ctx = context.WithValue(ctx, FileWriterKey, &SyncWriter{
+		m: sync.Mutex{},
+	})
+
+	// use infinite loop to try to create a  go routine
 	for {
 		pool.Put(
 			&Task{
-				Params: context.WithValue(context.WithValue(ctx, MapTask, mapf), ReduceTask, reducef),
+				Params: ctx,
 				Worker: work,
 			},
 		)
@@ -129,6 +149,7 @@ func work(ctx context.Context) {
 	for {
 		var mapf func(string, string) []KeyValue
 		var reducef func(string, []string) string
+		var syncWriter *SyncWriter
 		var ok bool
 
 		// Map function and Reduce function are packed in the context, get it by the key and assert the tyoe.
@@ -140,6 +161,10 @@ func work(ctx context.Context) {
 		if reducef, ok = ctx.Value(ReduceTask).(func(string, []string) string); !ok || reducef == nil {
 			log.Error("Params Error: get reduce function from ctx error")
 			return
+		}
+
+		if syncWriter, ok = ctx.Value(FileWriterKey).(*SyncWriter); !ok || syncWriter == nil {
+			log.Error("Params Error: get syncWriter from ctx error")
 		}
 
 		// ask task from master, try to get a test. If failed, try some times and if all failed, exit.
@@ -185,7 +210,7 @@ func work(ctx context.Context) {
 }
 
 // mapWorker is
-func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
+func mapWorker(mapf func(string, string, ) []KeyValue, params *AskTaskResponse) error {
 
 	var err error
 
@@ -210,9 +235,11 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 		return fmt.Errorf("Task Error: file contains no content or the mapf exit unexceptedly")
 	}
 
+	var tempFileList []*os.File
 	for _, v := range kva {
 
 		reduceId := int64(ihash(v.Key)) % NReduceTask
+		// TODO: Pass intermediate filename to master
 		intermediateFileName := "mr-" + strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
 		pwd, err := os.Getwd()
 		if err != nil {
@@ -222,27 +249,27 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 
 		filePath := pwd + "/" + intermediateFileName
 
-		// var tempFile *os.File
-		// if !Exists(filePath) {
-		// 	tempFile, err = os.Create(filePath)
-		// 	if err != nil {
-		// 		log.Errorf("System Error: create file error - %v", file)
-		// 	}
-		// }else {
-		// 	tempFile, err := os.OpenFile(filePath, )
-		// }
-		tempFile, err := os.OpenFile(filePath, os.O_APPEND | os.O_CREATE, 777)
+		var tempFile *os.File
+
+		// cause one file could be open by plenty of processes, so it is necessary to consider lock.
+
+		if !checkFileIsExist(filePath) {
+			tempFile, err = os.Create(filePath)
+			if err != nil {
+				log.Errorf("System Error: create file error - %v", file)
+			}
+		} else {
+			tempFile, err = os.OpenFile(filePath, os.O_APPEND, 0666)
+		}
 		defer tempFile.Close()
 
-		encoder := json.NewEncoder(tempFile)
-		err = encoder.Encode(v)
-		if err != nil {
-			log.Errorf("System Error: encode value to json error - %v", v)
-		}
+		fmt.Fprintf(tempFile, "%v %v\n", v.Key, v.Value)
 	}
+	// 刷缓存
+	tempFile.Sync()
 
 	// 输出KV 应用ihash
-  
+
 	return nil
 }
 
@@ -291,13 +318,8 @@ func rpcCaller(rpcFunc string, args interface{}, reply interface{}) bool {
  Utils contains some useful methonds.
 */
 
-// 判断所给路径文件/文件夹是否存在
-func Exists(path string) bool {
-	_, err := os.Stat(path)    //os.Stat获取文件信息
-	if err != nil {
-		if os.IsExist(err) {
-			return true
-		}
+func checkFileIsExist(filename string) bool {
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		return false
 	}
 	return true
