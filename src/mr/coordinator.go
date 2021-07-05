@@ -34,7 +34,7 @@ const (
 	MapTask    = 1
 	ReduceTask = 2
 
-	RpcRetryTimes = 3
+	MaxRetryTimes = 3
 
 	/*
 	 Coordinator RPC Function
@@ -48,6 +48,12 @@ const (
 	TaskNotFound  int64 = -1
 	FatalTaskType int64 = -1
 )
+
+var (
+	NReduceTask int64    // init when mrcoordinator call MkCoordinator and pass nReduce 
+	NMapTask	int64	// Map
+)
+
 
 type Coordinator struct {
 	MapTasks         map[int64]string // MapTaskID and filePath
@@ -107,7 +113,7 @@ func (c *Coordinator) Done() bool {
 func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
-	// Your code here.
+	// init some status
 
 	c.server()
 	return &c
@@ -152,7 +158,9 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
 		return taskID, MapTask
 	}
 
-	if taskID := c.FindReduceTasks(); taskID != TaskNotFound {
+
+	if taskID := c.FindReduceTasks(); taskID != -1 {
+    
 		return taskID, ReduceTask
 	}
 
