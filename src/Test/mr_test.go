@@ -12,10 +12,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
 	"syscall"
 	"testing"
-	"time"
 )
 
 func TestOSPackage(t *testing.T) {
@@ -66,29 +66,29 @@ func TestOSPackage(t *testing.T) {
 }
 
 func TestForFileLock(t *testing.T) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		log.Printf("os Getwd Err")
-		panic(err)
-	}
-	fmt.Println("pwd is - ", pwd)
+	// pwd, err := os.Getwd()
+	// if err != nil {
+	// 	log.Printf("os Getwd Err")
+	// 	panic(err)
+	// }
+	// fmt.Println("pwd is - ", pwd)
 
-	TestFile := pwd + "/" + "test.txt"
-	var file *os.File
-	if checkFileIsExist(TestFile) {
-		file, err = os.OpenFile(TestFile, os.O_APPEND, 0666)
-		if err != nil {
-			log.Printf("file create err")
-		}
-		// defer file.Close()
-	} else {
-		file, err = os.Create(TestFile)
-		if err != nil {
-			log.Printf("file create err")
-		}
-		// defer file.Close()
-	}
-	defer file.Close()
+	// TestFile := pwd + "/" + "test.txt"
+	// var file *os.File
+	// if checkFileIsExist(TestFile) {
+	// 	file, err = os.OpenFile(TestFile, os.O_APPEND, 0666)
+	// 	if err != nil {
+	// 		log.Printf("file create err")
+	// 	}
+	// 	// defer file.Close()
+	// } else {
+	// 	file, err = os.Create(TestFile)
+	// 	if err != nil {
+	// 		log.Printf("file create err")
+	// 	}
+	// 	// defer file.Close()
+	// }
+	// defer file.Close()
 
 	// add lock to file
 	// // 非阻塞模式下，加共享锁
@@ -105,30 +105,58 @@ func TestForFileLock(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 
-		go func(*os.File) {
+		go func(index int) {
 			defer wg.Done()
+
+			pwd, err := os.Getwd()
+			if err != nil {
+				log.Printf("os Getwd Err")
+				panic(err)
+			}
+			fmt.Println("pwd is - ", pwd)
+
+			TestFile := pwd + "/" + "test.txt"
+			var file *os.File
+			if checkFileIsExist(TestFile) {
+				file, err = os.OpenFile(TestFile, os.O_APPEND, 0666)
+				if err != nil {
+					log.Printf("file create err")
+				}
+				// defer file.Close()
+			} else {
+				file, err = os.Create(TestFile)
+				if err != nil {
+					log.Printf("file create err")
+				}
+				// defer file.Close()
+			}
+			defer file.Close()
 
 			if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
 				log.Println("add share lock in no block failed", err)
+				return
 			}
 
-			time.Sleep(10 * time.Second)
-			file.Write([]byte("Test\n"))
+			writeStr := "Test" + strconv.Itoa(index) + "\n"
+			file.Write([]byte(writeStr))
 			file.Sync()
 			// 解锁
 			if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
 				log.Println("unlock share lock failed", err)
+				return
 			}
 
-		}(file)
+		}(i)
 	}
 
 	wg.Wait()
 
 }
+
+
 
 /*
  Utils contains some useful methonds.
