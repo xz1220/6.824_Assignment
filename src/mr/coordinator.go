@@ -156,6 +156,7 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 	return nil
 }
 
+// TaskACk is a func that worker return the result by this func.
 func (c *Coordinator) TaskAck(args *TaskAckRequest, reply *TaskAckResponse) error {
 	if args.WorkerID == 0 {
 		return errors.New("Params Error: WorkerID equals zero!")
