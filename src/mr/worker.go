@@ -248,13 +248,14 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 		reduceId := int64(ihash(v.Key)) % NReduceTask
 		// TODO: Pass intermediate filename to master
 		intermediateFileName := "mr-" + strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
-		filePath := pwd + "/" + intermediateFileName
+		filePath := pwd + "/" + intermediateFileName + ".json"
 
 		// As the flag is os.O_APPEND, it is atonimic opetration and it is safe: https://blog.hotwill.cn/Linux%E5%B9%B6%E5%8F%91%E6%96%87%E4%BB%B6%E8%AF%BB%E5%86%99%E6%80%BB%E7%BB%93.html
 		if encoder, ok := fdJsonEncoder[filePath]; !ok || encoder == nil {
 			tempFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 			if err != nil {
 				log.Errorf("System Error: Open File Error, %v", filePath)
+				return fmt.Errorf("System Error: Open File Error, %v", filePath)
 			}
 			defer tempFile.Close() // not sure whether working
 
@@ -265,7 +266,16 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 		encoder := fdJsonEncoder[filePath]
 		encoder.Encode(&v)
 	}
-	// 输出KV 应用ihash
+
+	// 包装已经打开的文件
+	var filePaths []string
+	for path, _ := range fdJsonEncoder {
+		filePaths = append(filePaths, path)
+	}
+
+	// call rpc function to return file modified.
+	
+	ok := rpcCaller("TaskAck", )
 
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"os"
+	"sync"
 )
 
 const (
@@ -63,6 +64,8 @@ type Coordinator struct {
 	WorkerStatus     map[int64]int64  // worker status
 	IdleWorker       []int64          // idle worker queue
 	TotalWorkers     int64
+
+	WorkerMapFiles sync.Map
 
 	AllMapOk    bool //
 	AllReduceOk bool //
@@ -148,6 +151,22 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 		reply.TaskPath = EmptyPath
 		reply.TaskType = FatalTaskType
 		return nil
+	}
+
+	return nil
+}
+
+func (c *Coordinator) TaskAck(args *TaskAckRequest, reply *TaskAckResponse) error {
+	if args.WorkerID == 0 {
+		return errors.New("Params Error: WorkerID equals zero!")
+	}
+
+	if args.TaskType == MapTask {
+
+	} else if args.TaskType == ReduceTask {
+
+	} else {
+		return errors.New("Params Error: Task Type Error")
 	}
 
 	return nil
