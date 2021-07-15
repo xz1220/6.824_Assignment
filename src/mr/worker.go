@@ -274,8 +274,8 @@ func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) er
 	}
 
 	// call rpc function to return file modified.
-	
-	ok := rpcCaller("TaskAck", )
+
+	ok := rpcCaller("TaskAck")
 
 	return nil
 }

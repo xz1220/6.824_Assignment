@@ -57,13 +57,13 @@ var (
 )
 
 type Coordinator struct {
-	MapTasks         map[int64]string // MapTaskID and filePath
-	ReduceTasks      map[int64]string // ReduceTask
-	MapTaskStatus    map[int64]int64  // Task status
-	ReduceTaskStatus map[int64]int64  //
-	WorkerStatus     map[int64]int64  // worker status
-	IdleWorker       []int64          // idle worker queue
-	TotalWorkers     int64
+	MapTasks         sync.Map // MapTaskID and filePath
+	ReduceTasks      sync.Map // ReduceTask
+	MapTaskStatus    sync.Map  // Task status
+	ReduceTaskStatus sync.Map  //
+	WorkerStatus     sync.Map  // worker status
+	IdleWorker       []*int64          // idle worker queue
+	TotalWorkers     *int64
 
 	WorkerMapFiles sync.Map
 
@@ -136,21 +136,46 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 		}
 
 		// get the first ID from idle worker queue
-		reply.WorkerID = c.IdleWorker[0]
+		reply.WorkerID = *c.IdleWorker[0]
 		// if everything ok, change the staus when return
 		defer func() {
 			c.IdleWorker = c.IdleWorker[1:]
-			c.WorkerStatus[reply.WorkerID] = InProcess
+			c.WorkerStatus.Store(reply.WorkerID, InProcess)
 		}()
 	}
 
 	// TODO: try to assign work and update the status
 	taskID, taskType := c.FindTheTask()
-	if taskID == TaskNotFound {
+	if taskID == TaskNotFound || taskType == FatalTaskType {
 		log.Fatal("All Task Has Been Done")
 		reply.TaskPath = EmptyPath
 		reply.TaskType = FatalTaskType
 		return nil
+	}
+
+	reply.TaskType = taskType
+	if taskType == MapTask {
+		taskPath, ok := c.MapTasks.Load(taskID)
+		if !ok {
+			log.Printf("System Error: Load key error - %v", taskID)
+		}
+
+		reply.TaskPath, ok = taskPath.(string)
+		if !ok {
+			log.Printf("System Error: type assertion error - %v", taskPath)
+		}
+
+
+	} else if taskType == ReduceTask {
+		taskPath, ok := c.ReduceTasks.Load(taskID)
+		if !ok {
+			log.Printf("System Error: Load key error - %v", taskID)
+		}
+
+		reply.TaskPath, ok = taskPath.(string)
+		if !ok {
+			log.Printf("System Error: type assertion error - %v", taskPath)
+		}
 	}
 
 	return nil
@@ -174,11 +199,11 @@ func (c *Coordinator) TaskAck(args *TaskAckRequest, reply *TaskAckResponse) erro
 }
 
 func (c *Coordinator) FindTheTask() (int64, int64) {
-	if taskID := c.FindMapTasks(); taskID != TaskNotFound {
+	if taskID := c.FindIdleMapTasks(); taskID != TaskNotFound {
 		return taskID, MapTask
 	}
 
-	if taskID := c.FindReduceTasks(); taskID != -1 {
+	if taskID := c.FindIdleReduceTasks(); taskID != -1 {
 
 		return taskID, ReduceTask
 	}
@@ -196,18 +221,33 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
  Status check module
 */
 func (c *Coordinator) IsFinished() bool {
-	if c.FindMapTasks() == TaskNotFound && c.FindReduceTasks() == TaskNotFound {
+	if c.FindIdleMapTasks() == TaskNotFound && c.FindIdleReduceTasks() == TaskNotFound {
 		return true
 	}
 
 	return false
 }
 
-func (c *Coordinator) FindMapTasks() int64 {
-	for key, val := range c.MapTaskStatus {
-		if val == Idle {
-			return key
+func (c *Coordinator) FindIdleMapTasks() int64 {
+
+	var idKey chan interface{}
+
+	c.MapTaskStatus.Range(func(key, value interface{}) bool {
+		intVal := value.(int64)
+		if value == Idle {
+			idKey <- key
+			defer close(idKey)
+			return false
 		}
+		return true
+	})
+
+
+	
+	select {
+	case mapTaskId :=  <- id :
+		return mapTaskId
+
 	}
 
 	// update the MapStatus
@@ -215,7 +255,7 @@ func (c *Coordinator) FindMapTasks() int64 {
 	return TaskNotFound
 }
 
-func (c *Coordinator) FindReduceTasks() int64 {
+func (c *Coordinator) FindIdleReduceTasks() int64 {
 	for key, val := range c.ReduceTaskStatus {
 		if val == Idle {
 			return key
