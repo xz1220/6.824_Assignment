@@ -9,13 +9,13 @@
 package Test
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"sync"
-	"syscall"
 	"testing"
-	"time"
 )
 
 func TestOSPackage(t *testing.T) {
@@ -31,64 +31,56 @@ func TestOSPackage(t *testing.T) {
 	}
 	fmt.Println("pwd is - ", pwd)
 
-	TestFile := pwd + "/" + "test.txt"
+	TestFile := pwd + "/" + "test.json"
 	var file *os.File
-	if checkFileIsExist(TestFile) {
-		file, err = os.OpenFile(TestFile, os.O_APPEND, 0666)
-		if err != nil {
-			log.Printf("file create err")
-		}
-		// defer file.Close()
-	} else {
-		file, err = os.Create(TestFile)
-		if err != nil {
-			log.Printf("file create err")
-		}
-		// defer file.Close()
-	}
 
-	// file.Write([]byte("2222"))
-
-	// tt := &test{"1"}
-	// tt2 := &test{"2"}
-	// tt3 := &test{"3"}
-	// encode := json.NewEncoder(file)
-	// encode.Encode(tt)
-	// encode.Encode(tt2)
-	// encode.Encode(tt2)
-	// encode.Encode(tt3)
-
-	fmt.Fprintf(file, "%v %v\n", "1", "1")
-	file.WriteString("ttt")
-	file.Write([]byte("ttttttttt"))
-	file.Sync()
-	file.Close()
-}
-
-func TestForFileLock(t *testing.T) {
-	pwd, err := os.Getwd()
+	file, err = os.OpenFile(TestFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		log.Printf("os Getwd Err")
-		panic(err)
-	}
-	fmt.Println("pwd is - ", pwd)
-
-	TestFile := pwd + "/" + "test.txt"
-	var file *os.File
-	if checkFileIsExist(TestFile) {
-		file, err = os.OpenFile(TestFile, os.O_APPEND, 0666)
-		if err != nil {
-			log.Printf("file create err")
-		}
-		// defer file.Close()
-	} else {
-		file, err = os.Create(TestFile)
-		if err != nil {
-			log.Printf("file create err")
-		}
-		// defer file.Close()
+		log.Printf("file create err")
 	}
 	defer file.Close()
+
+	tt := &test{"1"}
+	tt2 := &test{"2"}
+	tt3 := &test{"3"}
+	encode := json.NewEncoder(file)
+	encode.Encode(tt)
+	encode.Encode(tt2)
+	encode.Encode(tt2)
+	encode.Encode(tt3)
+
+	// fmt.Fprintf(file, "%v %v\n", "1", "1")
+	// file.WriteString("ttt")
+	// file.Write([]byte("ttttttttt"))
+	// file.Sync()
+	// file.Close()
+}
+
+// This Test proft
+func TestForFileLock(t *testing.T) {
+	// pwd, err := os.Getwd()
+	// if err != nil {
+	// 	log.Printf("os Getwd Err")
+	// 	panic(err)
+	// }
+	// fmt.Println("pwd is - ", pwd)
+
+	// TestFile := pwd + "/" + "test.txt"
+	// var file *os.File
+	// if checkFileIsExist(TestFile) {
+	// 	file, err = os.OpenFile(TestFile, os.O_APPEND, 0666)
+	// 	if err != nil {
+	// 		log.Printf("file create err")
+	// 	}
+	// 	// defer file.Close()
+	// } else {
+	// 	file, err = os.Create(TestFile)
+	// 	if err != nil {
+	// 		log.Printf("file create err")
+	// 	}
+	// 	// defer file.Close()
+	// }
+	// defer file.Close()
 
 	// add lock to file
 	// // 非阻塞模式下，加共享锁
@@ -105,27 +97,61 @@ func TestForFileLock(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 100; i++ {
 		wg.Add(1)
 
-		go func(*os.File) {
-			if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
-				log.Println("add share lock in no block failed", err)
+		go func(index int) {
+			defer wg.Done()
+
+			pwd, err := os.Getwd()
+			if err != nil {
+				log.Printf("os Getwd Err")
+				panic(err)
 			}
+			fmt.Println("pwd is - ", pwd)
 
-			time.Sleep(10 * time.Second)
+			TestFile := pwd + "/" + "test.txt"
+			var file *os.File
 
-			// 解锁
-			if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
-				log.Println("unlock share lock failed", err)
+			file, err = os.OpenFile(TestFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+			if err != nil {
+				log.Printf("OpenFile Error")
 			}
+			defer file.Close()
 
-		}(file)
+			// if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
+			// 	log.Println("add share lock in no block failed", err)
+			// 	return
+			// }
+
+			writeStr := "Test" + strconv.Itoa(index) + "\n"
+			file.Write([]byte(writeStr))
+			// file.Sync()
+			// // 解锁
+			// if err := syscall.Flock(int(file.Fd()), syscall.LOCK_UN); err != nil {
+			// 	log.Println("unlock share lock failed", err)
+			// 	return
+			// }
+
+		}(i)
 	}
 
 	wg.Wait()
 
-	
+}
+
+func TestWriteAppend(t *testing.T) {
+
+	filePath := "/Users/bytedance/6.824_Assignment/src/Test/test.txt"
+	// 追加打开
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0777)
+	if err != nil {
+		fmt.Println("open file error")
+	}
+	defer file.Close()
+
+	file.Write([]byte("TestWriteAppend!"))
+	file.Sync()
 }
 
 /*

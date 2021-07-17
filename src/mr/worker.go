@@ -2,6 +2,7 @@ package mr
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/square/go-jose.v2/json"
 )
 
 //
@@ -23,7 +25,7 @@ type KeyValue struct {
 	Value string `json:"Value"`
 }
 
-// SyncWriter 
+// SyncWriter
 type SyncWriter struct {
 	m      sync.Mutex
 	Writer io.Writer
@@ -210,9 +212,7 @@ func work(ctx context.Context) {
 }
 
 // mapWorker is
-func mapWorker(mapf func(string, string, ) []KeyValue, params *AskTaskResponse) error {
-
-	var err error
+func mapWorker(mapf func(string, string) []KeyValue, params *AskTaskResponse) error {
 
 	// 读取文件
 	file, err := os.Open(params.TaskPath)
@@ -235,40 +235,47 @@ func mapWorker(mapf func(string, string, ) []KeyValue, params *AskTaskResponse) 
 		return fmt.Errorf("Task Error: file contains no content or the mapf exit unexceptedly")
 	}
 
-	var tempFileList []*os.File
-	for _, v := range kva {
+	fdJsonEncoder := make(map[string]*json.Encoder, 0)
 
+	pwd, err := os.Getwd()
+	if err != nil {
+		log.Errorf("System Error: get work path error!")
+		return fmt.Errorf("System Error: get work path error!")
+	}
+
+	for _, v := range kva {
+		// calculate the target ID
 		reduceId := int64(ihash(v.Key)) % NReduceTask
 		// TODO: Pass intermediate filename to master
 		intermediateFileName := "mr-" + strconv.Itoa(int(params.WorkerID)) + "-" + strconv.Itoa(int(reduceId))
-		pwd, err := os.Getwd()
-		if err != nil {
-			log.Errorf("System Error: get work path error!")
-			return fmt.Errorf("System Error: get work path error!")
-		}
+		filePath := pwd + "/" + intermediateFileName + ".json"
 
-		filePath := pwd + "/" + intermediateFileName
-
-		var tempFile *os.File
-
-		// cause one file could be open by plenty of processes, so it is necessary to consider lock.
-
-		if !checkFileIsExist(filePath) {
-			tempFile, err = os.Create(filePath)
+		// As the flag is os.O_APPEND, it is atonimic opetration and it is safe: https://blog.hotwill.cn/Linux%E5%B9%B6%E5%8F%91%E6%96%87%E4%BB%B6%E8%AF%BB%E5%86%99%E6%80%BB%E7%BB%93.html
+		if encoder, ok := fdJsonEncoder[filePath]; !ok || encoder == nil {
+			tempFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 			if err != nil {
-				log.Errorf("System Error: create file error - %v", file)
+				log.Errorf("System Error: Open File Error, %v", filePath)
+				return fmt.Errorf("System Error: Open File Error, %v", filePath)
 			}
-		} else {
-			tempFile, err = os.OpenFile(filePath, os.O_APPEND, 0666)
+			defer tempFile.Close() // not sure whether working
+
+			fdJsonEncoder[filePath] = json.NewEncoder(tempFile)
 		}
-		defer tempFile.Close()
 
-		fmt.Fprintf(tempFile, "%v %v\n", v.Key, v.Value)
+		// 写入文件
+		encoder := fdJsonEncoder[filePath]
+		encoder.Encode(&v)
 	}
-	// 刷缓存
-	tempFile.Sync()
 
-	// 输出KV 应用ihash
+	// 包装已经打开的文件
+	var filePaths []string
+	for path, _ := range fdJsonEncoder {
+		filePaths = append(filePaths, path)
+	}
+
+	// call rpc function to return file modified.
+
+	ok := rpcCaller("TaskAck")
 
 	return nil
 }
