@@ -117,6 +117,11 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	c := Coordinator{}
 
 	// init some status
+	NReduceTask = nReduce
+
+	for _, file := range files {
+		
+	}
 
 	c.server()
 	return &c
