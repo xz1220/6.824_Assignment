@@ -59,10 +59,10 @@ var (
 type Coordinator struct {
 	MapTasks         sync.Map // MapTaskID and filePath
 	ReduceTasks      sync.Map // ReduceTask
-	MapTaskStatus    sync.Map  // Task status
-	ReduceTaskStatus sync.Map  //
-	WorkerStatus     sync.Map  // worker status
-	IdleWorker       []*int64          // idle worker queue
+	MapTaskStatus    sync.Map // Task status
+	ReduceTaskStatus sync.Map //
+	WorkerStatus     sync.Map // worker status
+	IdleWorker       []*int64 // idle worker queue
 	TotalWorkers     *int64
 
 	WorkerMapFiles sync.Map
@@ -120,7 +120,7 @@ func MakeCoordinator(files []string, nReduce int) *Coordinator {
 	NReduceTask = nReduce
 
 	for _, file := range files {
-		
+
 	}
 
 	c.server()
@@ -169,7 +169,6 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 		if !ok {
 			log.Printf("System Error: type assertion error - %v", taskPath)
 		}
-
 
 	} else if taskType == ReduceTask {
 		taskPath, ok := c.ReduceTasks.Load(taskID)
@@ -235,23 +234,18 @@ func (c *Coordinator) IsFinished() bool {
 
 func (c *Coordinator) FindIdleMapTasks() int64 {
 
-	var idKey chan interface{}
+	var IdleKey int64
 
 	c.MapTaskStatus.Range(func(key, value interface{}) bool {
 		intVal := value.(int64)
-		if value == Idle {
-			idKey <- key
-			defer close(idKey)
+		if intVal == Idle {
+			IdleKey = intVal
 			return false
 		}
 		return true
 	})
 
-
-	
-	select {
-	case mapTaskId :=  <- id :
-		return mapTaskId
+	if IdleKey != 0 {
 
 	}
 

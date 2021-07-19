@@ -164,3 +164,24 @@ func checkFileIsExist(filename string) bool {
 	}
 	return true
 }
+
+// sync map
+func TestForSync(t *testing.T) {
+	var testmap sync.Map
+	var result string
+
+	for i := 0; i < 10; i++ {
+		testmap.Store(i, "key"+strconv.Itoa(i))
+	}
+
+	// TODO: 为什么这个是闭包函数？
+	testmap.Range(func(key, value interface{}) bool {
+		if key == 4 {
+			result = value.(string)
+			return false
+		}
+		return true
+	})
+
+	fmt.Println(result)
+}
