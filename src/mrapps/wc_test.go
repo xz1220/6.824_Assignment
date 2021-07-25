@@ -27,6 +27,6 @@ func TestPac(t *testing.T) {
 		}
 	}
 
-	testFunc(1, 2, []int64{2,3,4,5})
+	testFunc(1, []int64{2, 3, 4, 5}...)
 
 }

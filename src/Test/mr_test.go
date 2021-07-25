@@ -11,6 +11,7 @@ package Test
 import (
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"os"
 	"strconv"
@@ -163,4 +164,16 @@ func checkFileIsExist(filename string) bool {
 		return false
 	}
 	return true
+}
+
+func ihash(key string) int {
+	h := fnv.New32a()
+	h.Write([]byte(key))
+	return int(h.Sum32() & 0x7fffffff)
+}
+
+
+func TestIhash(t *testing.T) {
+	key := "test"
+	fmt.Println(ihash(key))
 }

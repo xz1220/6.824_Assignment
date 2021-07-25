@@ -3,10 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="b48bfe59-35f7-4e99-9934-f694f1bd25e2" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/src/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/src/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Test/mr_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/Test/mr_test.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/mr/coordinator.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/mr/coordinator.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/mr/worker.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/mr/worker.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/mrapps/wc_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/src/mrapps/wc_test.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,6 +39,25 @@
     <property name="node.js.path.for.package.tslint" value="project" />
     <property name="node.js.selected.package.eslint" value="(autodetect)" />
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
+  </component>
+  <component name="RunManager">
+    <configuration name="TestIhash in 6.824/Test" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="6.824" />
+      <working_directory value="$PROJECT_DIR$/src/Test" />
+      <root_directory value="$PROJECT_DIR$/src" />
+      <kind value="PACKAGE" />
+      <package value="6.824/Test" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <framework value="gotest" />
+      <pattern value="^\QTestIhash\E$" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.TestIhash in 6.824/Test" />
+      </list>
+    </recent_temporary>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TypeScriptGeneratedFilesManager">

@@ -24,51 +24,60 @@ const (
 	 worker to ask a new task. Task status will be reset to 0 and waitting to be assigned.
 	*/
 
-	Idle      = 0 // nothing to do
-	InProcess = 1 // Process a task
-	Completed = 2 // has completed
-	Error     = 3 // only happend in the goroutines
+	Idle      int64 = 0 // nothing to do
+	InProcess int64 = 1 // Process a task
+	Completed int64 = 2 // has completed
+	Error     int64 = 3 // only happend in the goroutines
 
 	/*
 	 TaskType For worker to choose run mapFunc or reduceFunc
 	*/
-	MapTask    = 1
-	ReduceTask = 2
+	MapTask    int64 = 1
+	ReduceTask int64 = 2
 
-	MaxRetryTimes = 3
+	MaxRetryTimes int64 = 3
 
 	/*
 	 Coordinator RPC Function
 	*/
-	AssignWorks = "Coordinator.AssignWorks"
+	AssignWorks string = "Coordinator.AssignWorks"
 
 	/*
 	 some useful defination
 	*/
-	EmptyPath           = ""
-	TaskNotFound  int64 = -1
-	FatalTaskType int64 = -1
-	FileWriterKey       = "syncWriter"
+	EmptyPath     string = ""
+	TaskNotFound  int64  = -1
+	FatalTaskType int64  = -1
+	FileWriterKey string = "syncWriter"
 )
 
 var (
 	NReduceTask int64 // init when mrcoordinator call MkCoordinator and pass nReduce
 	NMapTask    int64 // Map
+
+	CurrentTaskID   int64        // TaskID for assign
+	CurrentWorkerID int64        //
+	mutex           sync.RWMutex //
 )
 
+type TaskInfo struct {
+	TaskID       int64
+	TaskFilePath string
+	TaskStatus   int64
+}
+
 type Coordinator struct {
-	MapTasks         sync.Map // MapTaskID and filePath
-	ReduceTasks      sync.Map // ReduceTask
-	MapTaskStatus    sync.Map  // Task status
-	ReduceTaskStatus sync.Map  //
-	WorkerStatus     sync.Map  // worker status
-	IdleWorker       []*int64          // idle worker queue
-	TotalWorkers     *int64
+	MapTasks sync.Map // MapTaskID -> Task
+	AllMapOk bool     //
+
+	ReduceTasks sync.Map // ReduceTask
+	AllReduceOk bool     //
+
+	WorkerStatus sync.Map // workID -> work status
+	IdleWorker   []int64  // idle worker queue
+	TotalWorkers int64    // total worker number
 
 	WorkerMapFiles sync.Map
-
-	AllMapOk    bool //
-	AllReduceOk bool //
 }
 
 //
@@ -136,7 +145,7 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 		}
 
 		// get the first ID from idle worker queue
-		reply.WorkerID = *c.IdleWorker[0]
+		reply.WorkerID = c.IdleWorker[0]
 		// if everything ok, change the staus when return
 		defer func() {
 			c.IdleWorker = c.IdleWorker[1:]
@@ -165,7 +174,6 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 			log.Printf("System Error: type assertion error - %v", taskPath)
 		}
 
-
 	} else if taskType == ReduceTask {
 		taskPath, ok := c.ReduceTasks.Load(taskID)
 		if !ok {
@@ -181,7 +189,7 @@ func (c *Coordinator) AssignWorks(args *AskTaskRequest, reply *AskTaskResponse) 
 	return nil
 }
 
-// TaskACk is a func that worker return the result by this func.
+// TaskAck is a func that worker return the result by this func.
 func (c *Coordinator) TaskAck(args *TaskAckRequest, reply *TaskAckResponse) error {
 	if args.WorkerID == 0 {
 		return errors.New("Params Error: WorkerID equals zero!")
@@ -198,6 +206,7 @@ func (c *Coordinator) TaskAck(args *TaskAckRequest, reply *TaskAckResponse) erro
 	return nil
 }
 
+//FindTheTask find the idle task in map tasks first and the find the idle task in reduce tasks.
 func (c *Coordinator) FindTheTask() (int64, int64) {
 	if taskID := c.FindIdleMapTasks(); taskID != TaskNotFound {
 		return taskID, MapTask
@@ -217,9 +226,13 @@ func (c *Coordinator) FindTheTask() (int64, int64) {
 
 // TODO：Implement Heartbeat module
 
-/*
- Status check module
+/**
+Task Management Module, the main function is to find, update the MapTask and ReduceTask.
+1. Find module: find the idle map or reduce task, and if all tasks has been done, update the status . The IsFinished function will check allMapOk and AllReduceOk.
+2. Update module:
 */
+
+//IsFinished judge whether all the task has completed.
 func (c *Coordinator) IsFinished() bool {
 	if c.FindIdleMapTasks() == TaskNotFound && c.FindIdleReduceTasks() == TaskNotFound {
 		return true
@@ -228,41 +241,82 @@ func (c *Coordinator) IsFinished() bool {
 	return false
 }
 
+//FindIdleMapTasks use findIdleTasks in the idle worker.
 func (c *Coordinator) FindIdleMapTasks() int64 {
 
-	var idKey chan interface{}
+	idleTaskId := FindIdleTasks(&c.MapTasks)
+	if idleTaskId == TaskNotFound {
+		c.AllMapOk = true
+	}
 
-	c.MapTaskStatus.Range(func(key, value interface{}) bool {
-		intVal := value.(int64)
-		if value == Idle {
-			idKey <- key
-			defer close(idKey)
-			return false
+	return idleTaskId
+}
+
+//FindIdleReduceTasks use findIdleTasks in the idle worker.
+func (c *Coordinator) FindIdleReduceTasks() int64 {
+
+	idleTaskId := FindIdleTasks(&c.ReduceTasks)
+	if idleTaskId == TaskNotFound {
+		c.AllReduceOk = true
+	}
+
+	return idleTaskId
+}
+
+func (c *Coordinator) InitMapTasks(files []string) {
+	for _, file := range files {
+		c.MapTasks.Store(NewTaskID(), file)
+	}
+}
+
+func (c *Coordinator) InitReduceTasks(nReduce int64) {
+	for i:=0 ; i < nReduce ; i++ {
+
+	}
+}
+
+
+/**
+	Utils module: contains some helper function.
+ */
+
+//FindIdleTasks range the map and return the idle workerId
+func FindIdleTasks(syncMap *sync.Map) int64 {
+
+	// idle worker id
+	var idelWorkerId int64
+
+	// range the map and find the idle worker
+	syncMap.Range(func(key, value interface{}) bool {
+		switch value.(type) {
+		case TaskInfo:
+			value, ok := value.(TaskInfo)
+			if ok && value.TaskStatus == Idle {
+				return false
+			}
 		}
 		return true
 	})
 
-
-	
-	select {
-	case mapTaskId :=  <- id :
-		return mapTaskId
-
+	// worker id is not 0
+	if idelWorkerId != 0 {
+		return idelWorkerId
 	}
 
-	// update the MapStatus
-	c.AllMapOk = true
 	return TaskNotFound
 }
 
-func (c *Coordinator) FindIdleReduceTasks() int64 {
-	for key, val := range c.ReduceTaskStatus {
-		if val == Idle {
-			return key
-		}
-	}
+//NewTaskID return a new taskID.
+func NewTaskID() int64 {
+	mutex.Lock()
+	defer mutex.Unlock()
+	CurrentTaskID++
+	return CurrentTaskID
+}
 
-	// update the reduceStatus
-	c.AllReduceOk = true
-	return TaskNotFound
+func NewWorkerID() int64 {
+	mutex.Lock()
+	defer mutex.Unlock()
+	CurrentWorkerID ++
+	return CurrentWorkerID
 }
