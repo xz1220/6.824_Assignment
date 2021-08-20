@@ -14,7 +14,6 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/square/go-jose.v2/json"
 )
 
 //
@@ -138,7 +137,7 @@ func work(ctx context.Context) {
 	var workerID int64
 
 	// Make sure the number of reduce task has been assigned the value.
-	for retry := 0; NReduceTask == 0 && retry < MaxRetryTimes; retry++ {
+	for retry := 0; NReduceTask == 0 && int64(retry) < MaxRetryTimes; retry++ {
 		time.Sleep(2 * time.Second)
 	}
 
@@ -178,7 +177,7 @@ func work(ctx context.Context) {
 		}
 
 		ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
-		for times := 0; !ok && times < MaxRetryTimes; times++ {
+		for times := 0; !ok && int64(times) < MaxRetryTimes; times++ {
 			log.Error("Rpc Caller Error: AssignWorks Error, Start Retry")
 			ok = rpcCaller(AssignWorks, taskRequest, taskResponse)
 		}
